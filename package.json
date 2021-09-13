@@ -28,11 +28,11 @@
     "server.js"
   ],
   "dependencies": {
+    "dotenv": "^10.0.0",
     "http-proxy": "1.11.1",
     "proxy-from-env": "0.0.1"
   },
   "devDependencies": {
-    "dotenv": "^10.0.0",
     "coveralls": "^2.11.6",
     "eslint": "^2.2.0",
     "istanbul": "^0.4.2",
