@@ -1,3 +1,4 @@
+require("dotenv").config();
 const url = require("url");
 
 function parseEnvList(env) {
@@ -47,14 +48,12 @@ cors_proxy
       // 'x-forwarded-port',
     ],
     redirectSameOrigin: true,
+    getProxyForUrl: () => {
+      return fixieUrl;
+    },
     httpProxyOptions: {
       // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
       xfwd: false,
-      target: {
-        host: fixieUrl.hostname,
-        port: fixieUrl.port,
-      },
-      auth: fixieUrl.auth,
     },
   })
   .listen(port, host, function () {
