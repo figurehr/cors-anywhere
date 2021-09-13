@@ -18,7 +18,7 @@ var port = process.env.PORT || 8080;
 // use originWhitelist instead.
 var originBlacklist = parseEnvList(process.env.CORSANYWHERE_BLACKLIST);
 var originWhitelist = parseEnvList(process.env.CORSANYWHERE_WHITELIST);
-const fixieUrl = process.env.FIXIE_URL;
+const fixieUrl = url.parse(process.env.FIXIE_URL);
 
 // Set up rate-limiting to avoid abuse of the public CORS Anywhere server.
 var checkRateLimit = require("./lib/rate-limit")(
@@ -50,7 +50,11 @@ cors_proxy
     httpProxyOptions: {
       // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
       xfwd: false,
-      target: fixieUrl,
+      target: {
+        host: fixieUrl.hostname,
+        port: fixieUrl.port,
+      },
+      auth: fixieUrl.auth,
     },
   })
   .listen(port, host, function () {
