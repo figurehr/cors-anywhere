@@ -1,1 +1,2 @@
-web: node server.js
+release: yarn && yarn build
+web: node lib/server.js

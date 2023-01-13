@@ -1,41 +1,41 @@
-require("dotenv").config();
-const url = require("url");
+import dotenv from "dotenv";
 
-function parseEnvList(env) {
+import corsProxy from "./corsProxy";
+import createRateLimitChecker from "./rateLimit";
+
+dotenv.config();
+
+const parseEnvList = (env: string | undefined) => {
   if (!env) {
     return [];
   }
   return env.split(",");
-}
+};
 
 // Listen on a specific host via the HOST environment variable
-var host = process.env.HOST || "0.0.0.0";
+const HOST = process.env.HOST || "0.0.0.0";
 // Listen on a specific port via the PORT environment variable
-var port = process.env.PORT || 8080;
+const PORT = Number(process.env.PORT) || 8080;
 
 // Grab the blacklist from the command-line so that we can update the blacklist without deploying
-// again. CORS Anywhere is open by design, and this blacklist is not used, except for countering
+// again. CORS Proxify is open by design, and this blacklist is not used, except for countering
 // immediate abuse (e.g. denial of service). If you want to block all origins except for some,
 // use originWhitelist instead.
-var originBlacklist = parseEnvList(process.env.CORSANYWHERE_BLACKLIST);
-var originWhitelist = parseEnvList(process.env.CORSANYWHERE_WHITELIST);
-const fixieUrl = url.parse(process.env.FIXIE_URL);
+var originBlacklist = parseEnvList(process.env.CORSPROXIFY_BLACKLIST);
+var originWhitelist = parseEnvList(process.env.CORSPROXIFY_WHITELIST);
 
-// Set up rate-limiting to avoid abuse of the public CORS Anywhere server.
-var checkRateLimit = require("./lib/rate-limit")(
-  process.env.CORSANYWHERE_RATELIMIT
+// Set up rate-limiting to avoid abuse of the public CORS Proxify server.
+const checkRateLimit = createRateLimitChecker(
+  process.env.CORSPROXIFY_RATELIMIT
 );
 
-var cors_proxy = require("./lib/cors-anywhere");
-cors_proxy
+corsProxy
   .createServer({
     originBlacklist: originBlacklist,
     originWhitelist: originWhitelist,
     requireHeader: ["origin", "x-requested-with"],
     checkRateLimit: checkRateLimit,
     removeHeaders: [
-      "cookie",
-      "cookie2",
       // Strip Heroku-specific headers
       "x-request-start",
       "x-request-id",
@@ -48,14 +48,11 @@ cors_proxy
       // 'x-forwarded-port',
     ],
     redirectSameOrigin: true,
-    getProxyForUrl: () => {
-      return fixieUrl;
-    },
     httpProxyOptions: {
       // Do not add X-Forwarded-For, etc. headers, because Heroku already adds it.
       xfwd: false,
     },
   })
-  .listen(port, host, function () {
-    console.log("Running CORS Anywhere on " + host + ":" + port);
+  .listen(PORT, HOST, () => {
+    console.log("Running CORS proxy on " + HOST + ":" + PORT);
   });

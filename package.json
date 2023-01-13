@@ -1,16 +1,25 @@
 {
-  "name": "cors-anywhere",
-  "version": "0.4.4",
-  "description": "CORS Anywhere is a reverse proxy which adds CORS headers to the proxied request. Request URL is taken from the path",
+  "name": "cors-proxify",
+  "version": "0.0.1",
+  "description": "CORS Proxify is a reverse proxy which adds CORS headers to the proxied request. Request URL is taken from the path",
   "license": "MIT",
-  "author": "Rob Wu <rob@robwu.nl>",
+  "author": "Conlin Durbin <conlin.durbin@payscale.com>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Rob--W/cors-anywhere.git"
+    "url": "https://github.com/getagora/cors-proxify.git"
+  },
+  "ava": {
+    "files": ["test/**"],
+    "extensions": [
+      "ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ]
   },
   "bugs": {
-    "url": "https://github.com/Rob--W/cors-anywhere/issues/",
-    "email": "rob@robwu.nl"
+    "url": "https://github.com/getagora/cors-proxify",
+    "email": "conlin.durbin@payscale.com"
   },
   "keywords": [
     "cors",
@@ -19,34 +28,33 @@
     "proxy",
     "heroku"
   ],
-  "main": "./lib/cors-anywhere.js",
-  "files": [
-    "lib/",
-    "test/",
-    "Procfile",
-    "demo.html",
-    "server.js"
-  ],
+  "main": "./lib/corsProxy.js",
   "dependencies": {
-    "dotenv": "^10.0.0",
+    "dotenv": "^16.0.3",
     "http-proxy": "1.11.1",
-    "proxy-from-env": "0.0.1"
+    "proxy-from-env": "1.1.0"
   },
   "devDependencies": {
-    "coveralls": "^2.11.6",
+    "@types/http-proxy": "^1.17.9",
+    "@types/node": "^18.11.18",
+    "@types/proxy-from-env": "^1.0.1",
+    "ava": "^5.1.0",
+    "c8": "^7.12.0",
     "eslint": "^2.2.0",
-    "istanbul": "^0.4.2",
-    "lolex": "^1.5.0",
-    "mocha": "^3.4.2",
-    "nock": "^8.2.1",
-    "supertest": "^2.0.1"
+    "nock": "^13.3.0",
+    "node-fetch": "^3.3.0",
+    "supertest": "^6.3.3",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.4"
   },
   "scripts": {
     "lint": "eslint .",
-    "test": "mocha ./test/test*.js --reporter spec",
-    "test-coverage": "istanbul cover ./node_modules/.bin/_mocha -- test/test.js test/test-ratelimit.js --reporter spec"
+    "test": "ava",
+    "test-coverage": "c8 ava",
+    "dev": "ts-node src/server.ts",
+    "build": "tsc"
   },
   "engines": {
-    "node": ">=0.10.0"
+    "node": ">=19.0.0"
   }
 }
