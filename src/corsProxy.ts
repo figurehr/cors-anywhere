@@ -1,6 +1,5 @@
 import http from "node:http";
 import https from "node:https";
-import { REDIRECT_STATUSES } from "./constants";
 import httpProxy from "http-proxy";
 
 import { parseURL, isValidHostName, getProxyForUrl } from "./utils";
@@ -91,79 +90,22 @@ const defaultHandlerOptions = {
   corsMaxAge: 0, // If set, an Access-Control-Max-Age header with this value (in seconds) will be added.
 };
 
-const handleRedirectStatus = (
-  proxy: httpProxy,
-  proxyRes: http.IncomingMessage,
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-  corsState: CorsState
-): boolean => {
-  const statusCode = proxyRes.statusCode;
-  let locationHeader = proxyRes.headers["location"];
-  let parsedLocation;
-  if (locationHeader) {
-    locationHeader = new URL(
-      locationHeader,
-      corsState.location.href
-    ).toString();
-    parsedLocation = parseURL(locationHeader);
-  }
-  if (parsedLocation) {
-    if (statusCode === 301 || statusCode === 302 || statusCode === 303) {
-      // Exclude 307 & 308, because they are rare, and require preserving the method + request body
-      corsState.redirectCount_ = (corsState.redirectCount_ ?? 0) + 1;
-      if (corsState.redirectCount_ <= corsState.maxRedirects) {
-        // Handle redirects within the server, because some clients (e.g. Android Stock Browser)
-        // cancel redirects.
-        // Set header for debugging purposes. Do not try to parse it!
-        res.setHeader(
-          "X-CORS-Redirect-" + corsState.redirectCount_,
-          statusCode + " " + locationHeader
-        );
-
-        req.method = "GET";
-        req.headers["content-length"] = "0";
-        delete req.headers["content-type"];
-        corsState.location = parsedLocation;
-
-        // Remove all listeners (=reset events to initial state)
-        req.removeAllListeners();
-
-        // Initiate a new proxy request.
-        proxyRequest(req, res, proxy, corsState);
-        return false;
-      }
-    }
-    proxyRes.headers["location"] =
-      corsState.proxyBaseUrl + "/" + locationHeader;
-  }
-  return false;
-};
-
 const onProxyResponse = (
-  proxy: httpProxy,
   proxyRes: http.IncomingMessage,
   req: http.IncomingMessage,
   res: http.ServerResponse,
   corsState: CorsState
-): boolean => {
-  const statusCode = proxyRes.statusCode;
-
-  if (!corsState.redirectCount_) {
+) => {
+  if (!corsState.redirectCount_ && !res.headersSent) {
     res.setHeader("x-request-url", corsState.location.href);
   }
 
-  if (statusCode && REDIRECT_STATUSES.includes(statusCode)) {
-    return handleRedirectStatus(proxy, proxyRes, req, res, corsState);
-  }
-
   // Strip cookies
-  /* delete proxyRes.headers["set-cookie"]; */
-  /* delete proxyRes.headers["set-cookie2"]; */
+  delete proxyRes.headers["set-cookie"];
+  delete proxyRes.headers["set-cookie2"];
 
   proxyRes.headers["x-final-url"] = corsState.location.href;
   withCORS(proxyRes.headers, req, corsState.corsMaxAge);
-  return true;
 };
 
 const proxyRequest = (
@@ -180,6 +122,7 @@ const proxyRequest = (
     prependPath: false,
     target: location?.toString(),
     selfHandleResponse: true,
+    followRedirects: true,
     headers: {
       host: location?.host ?? "",
     },
@@ -204,8 +147,14 @@ const proxyRequest = (
     }
   }
 
-  proxy.on("proxyRes", (proxyRes, req, res) => {
-    onProxyResponse(proxy, proxyRes, req, res, corsState);
+  proxy.on("proxyReq", (proxyReq) => {
+    proxyReq.on("response", (proxyRes) => {
+      try {
+        onProxyResponse(proxyRes, request, response, corsState);
+      } catch (err) {
+        proxyReq.emit("error", err);
+      }
+    });
   });
 
   try {
@@ -384,6 +333,12 @@ const createServer = (options: CreateServerOptions) => {
   const server = options.httpsOptions
     ? https.createServer(requestHandler)
     : http.createServer(requestHandler);
+
+  proxy.on("error", (err, _req, res) => {
+    console.error(err);
+    // eat errors for now
+    res.end();
+  });
 
   return server;
 };
