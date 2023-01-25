@@ -54,7 +54,7 @@ type CreateServerOptions = Partial<CorsProxyOptions> & {
 const withCORS = (
   headers: Headers,
   request: http.IncomingMessage,
-  corsMaxAge: number
+  corsMaxAge?: number
 ) => {
   headers["access-control-allow-origin"] = "*";
   if (request.method === "OPTIONS" && corsMaxAge) {
@@ -95,18 +95,7 @@ const onProxyResponse = (
   req: http.IncomingMessage,
   res: http.ServerResponse,
   corsState: CorsState
-) => {
-  if (!corsState.redirectCount_ && !res.headersSent) {
-    res.setHeader("x-request-url", corsState.location.href);
-  }
-
-  // Strip cookies
-  delete proxyRes.headers["set-cookie"];
-  delete proxyRes.headers["set-cookie2"];
-
-  proxyRes.headers["x-final-url"] = corsState.location.href;
-  withCORS(proxyRes.headers, req, corsState.corsMaxAge);
-};
+) => {};
 
 const proxyRequest = (
   request: http.IncomingMessage,
@@ -150,12 +139,24 @@ const proxyRequest = (
   proxy.on("proxyReq", (proxyReq) => {
     proxyReq.on("response", (proxyRes) => {
       try {
-        onProxyResponse(proxyRes, request, response, corsState);
+        if (!corsState.redirectCount_ && !response.headersSent) {
+          response.setHeader("x-request-url", corsState.location.href);
+        }
+
+        // Strip cookies
+        delete proxyRes.headers["set-cookie"];
+        delete proxyRes.headers["set-cookie2"];
+
+        proxyRes.headers["x-final-url"] = corsState.location.href;
+        withCORS(proxyRes.headers, request);
       } catch (err) {
         proxyReq.emit("error", err);
       }
     });
   });
+
+  withCORS(request.headers, request);
+  console.log(request.headers);
 
   try {
     proxy.web(request, response, proxyOptions);
