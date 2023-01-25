@@ -156,7 +156,6 @@ const proxyRequest = (
   });
 
   withCORS(request.headers, request);
-  console.log(request.headers);
 
   try {
     proxy.web(request, response, proxyOptions);
